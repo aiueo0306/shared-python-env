@@ -2,3 +2,4 @@ feedgen
 playwright
 requests
 beautifulsoup4
+feedparser
