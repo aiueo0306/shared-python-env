@@ -3,3 +3,4 @@ playwright
 requests
 beautifulsoup4
 feedparser
+dateutil
