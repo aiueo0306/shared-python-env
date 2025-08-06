@@ -47,8 +47,9 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
                 except Exception as e:
                     print(f"⚠ 直接日付取得に失敗: {e}")
                     date_text = ""
-
+            print(date_text)
             match = re.search(date_regex, date_text)
+            print(match)
             if match:
                 year_str, month_str, day_str = match.groups()
                 year = int(year_str)
