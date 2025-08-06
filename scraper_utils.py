@@ -8,11 +8,11 @@ def extract_items(page, SELECTER_DATE,SELECTER_TITLE,title_selecter, title_index
     blocks1 = page.locator(SELECTER_TITLE)
     count = blocks1.count()
     
-    blocks2 = page.locator(SELECTER_DATE)
-    
     print(f"📦 発見した記事数: {count}")
     items = []
 
+    blocks2 = page.locator(SELECTER_DATE)
+    
     for i in range(min(count, max_items)):
         try:
             block1 = blocks1.nth(i)
