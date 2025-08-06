@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
-def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,date_regex,max_items=10):
+def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format, date_regex, max_items=10):
     
     page.wait_for_selector(SELECTOR_TITLE, timeout=10000)
     
