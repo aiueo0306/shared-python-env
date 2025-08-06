@@ -49,15 +49,15 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
                     date_text = ""
 
             match = re.search(date_regex, date_text)
-                if match:
-                    year_str, month_str, day_str = match.groups()
-                    year = int(year_str)
-                    if year < 100:
-                        year += 2000  # 2桁西暦 → 2000年以降と仮定
-                    pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
-                else:
-                    print("⚠ 日付の抽出に失敗しました")
-                    pub_date = None  # or continue
+            if match:
+                year_str, month_str, day_str = match.groups()
+                year = int(year_str)
+                if year < 100:
+                    year += 2000  # 2桁西暦 → 2000年以降と仮定
+                pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+            else:
+                print("⚠ 日付の抽出に失敗しました")
+                pub_date = None  # or continue
             
             # match = re.search(date_regex,date_text)
             # if match:
