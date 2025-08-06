@@ -31,10 +31,21 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
                 full_link = base_url
             print(full_link)
             # 日付
-            try:
-                date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
-            except:
-                date_text = block2.inner_text().strip()
+
+            # date_selector が空文字や None でない場合 → 子要素探索、それ以外はそのまま
+            if date_selector:
+                try:
+                    date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
+                except Exception as e:
+                    print(f"⚠ 日付セレクターによる取得に失敗: {e}")
+                    date_text = ""
+            else:
+                try:
+                    date_text = block2.inner_text().strip()
+                except Exception as e:
+                    print(f"⚠ 直接日付取得に失敗: {e}")
+                    date_text = ""
+
             pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
             print(pub_date)
             if not title or not href:
