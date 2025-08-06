@@ -35,7 +35,7 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
             # date_selector が空文字や None でない場合 → 子要素探索、それ以外はそのまま
             if date_selector:
                 try:
-                    date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
+                    date_text = block2.locator(date_selector).nth(date_index).text_content().strip()
                 except Exception as e:
                     print(f"⚠ 日付セレクターによる取得に失敗: {e}")
                     date_text = ""
