@@ -20,10 +20,6 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
             block2 = blocks2.nth(i)
 
             # タイトル
-            # title_elem = block1.locator(title_selector).nth(title_index)
-            # title = title_elem.inner_text().strip()
-            # print(title)
-
             if title_selector:
                 title_elem = block1.locator(title_selector).nth(title_index)
                 title = title_elem.inner_text().strip()
@@ -34,12 +30,20 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
 
             
             # URL
-            try:
-                href = block1.locator(href_selector).nth(href_index).get_attribute("href")
-                full_link = urljoin(base_url, href)
-            except:
-                href = ""
-                full_link = base_url
+            if title_selector:
+                try:
+                    href = block1.locator(href_selector).nth(href_index).get_attribute("href")
+                    full_link = urljoin(base_url, href)
+                except:
+                    href = ""
+                    full_link = base_url
+            else:
+                try:
+                    href = block1.get_attribute("href")
+                    full_link = urljoin(base_url, href)
+                except:
+                    href = ""
+                    full_link = base_url
             print(full_link)
             
             # 日付
