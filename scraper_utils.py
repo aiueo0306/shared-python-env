@@ -20,9 +20,18 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
             block2 = blocks2.nth(i)
 
             # タイトル
-            title_elem = block1.locator(title_selector).nth(title_index)
-            title = title_elem.inner_text().strip()
+            # title_elem = block1.locator(title_selector).nth(title_index)
+            # title = title_elem.inner_text().strip()
+            # print(title)
+
+            if title_selector:
+                title_elem = block1.locator(title_selector).nth(title_index)
+                title = title_elem.inner_text().strip()
+            else:
+                title = block1.inner_text().strip()
             print(title)
+
+
             
             # URL
             try:
