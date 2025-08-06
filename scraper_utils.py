@@ -22,20 +22,20 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
             title_elem = block1.locator(title_selector).nth(title_index)
             title = title_elem.inner_text().strip()
 
+            # URL
+            try:
+                href = block1.locator(href_selector).nth(href_index).get_attribute("href")
+                full_link = urljoin(base_url, href)
+            except:
+                href = ""
+                full_link = base_url
+            
             # 日付
             try:
                 date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
             except:
                 date_text = block2.inner_text().strip()
             pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
-
-            # URL
-            try:
-                href = block1.locator1(href_selector).nth(href_index).get_attribute("href")
-                full_link = urljoin(base_url, href)
-            except:
-                href = ""
-                full_link = base_url
 
             if not title or not href:
                 print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）: title='{title}', href='{href}'")
