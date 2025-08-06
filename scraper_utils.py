@@ -6,7 +6,7 @@ def extract_items(page, SELECTER_DATE,SELECTER_TITLE,title_selecter, title_index
     page.wait_for_selector(SELECTER_TITLE, timeout=10000)
     
     blocks1 = page.locator(SELECTER_TITLE)
-    count = blocks.count()
+    count = blocks1.count()
     
     blocks2 = page.locator(SELECTER_DATE)
     
