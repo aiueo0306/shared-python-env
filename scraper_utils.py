@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
-def extract_items(page, selector, title_selector, title_index, href_selector, href_index, base_url, max_items=10):
+def extract_items(page, selector, title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,max_items=10):
     page.wait_for_selector(selector, timeout=10000)
     
     blocks = page.locator(selector)
@@ -13,7 +13,7 @@ def extract_items(page, selector, title_selector, title_index, href_selector, hr
         try:
             block = blocks.nth(i)
 
-            title = block.locator(date_selector).nth(date_index).inner_text().strip()
+            date_text = block.locator(date_selector).nth(date_index).inner_text().strip()
             pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
 
             title = block.locator(title_selector).nth(title_index).inner_text().strip()
