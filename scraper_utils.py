@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from urllib.parse import urljoin
 
 def extract_items(page, SELECTER_DATE,SELECTER_TITLE,title_selecter, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,max_items=10):
-    page.wait_for_selector(selector, timeout=10000)
+    
+    page.wait_for_selector(SELECTER_TITLE, timeout=10000)
     
     blocks1 = page.locator(SELECTER_TITLE)
     count = blocks.count()
