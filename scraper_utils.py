@@ -47,13 +47,24 @@ def extract_items(page, SELECTOR_DATE, SELECTOR_TITLE, title_selector, title_ind
                 except Exception as e:
                     print(f"⚠ 直接日付取得に失敗: {e}")
                     date_text = ""
+
+            match = re.search(date_regex, date_text)
+                if match:
+                    year_str, month_str, day_str = match.groups()
+                    year = int(year_str)
+                    if year < 100:
+                        year += 2000  # 2桁西暦 → 2000年以降と仮定
+                    pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                else:
+                    print("⚠ 日付の抽出に失敗しました")
+                    pub_date = None  # or continue
             
-            match = re.search(date_regex,date_text)
-            if match:
-                date_str = match.group()
-                pub_date = datetime.strptime(date_str, date_format).replace(tzinfo=timezone.utc)
-            else:
-                print("⚠ 日付の抽出に失敗しました")
+            # match = re.search(date_regex,date_text)
+            # if match:
+            #     date_str = match.group()
+            #     pub_date = datetime.strptime(date_str, date_format).replace(tzinfo=timezone.utc)
+            # else:
+            #     print("⚠ 日付の抽出に失敗しました")
 
             print(pub_date)
             
