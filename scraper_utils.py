@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
-def extract_items(page, selector, title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,max_items=10):
+def extract_items(page, selector,counter, title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,max_items=10):
     page.wait_for_selector(selector, timeout=10000)
     
     blocks = page.locator(selector)
-    count = blocks.count()
+    counts = page.locator(counter)
+    count = counts.count()
     print(f"📦 発見した記事数: {count}")
     items = []
 
