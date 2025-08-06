@@ -31,7 +31,7 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
 
             # URL
             try:
-                href = block.locator1(href_selector).nth(href_index).get_attribute("href")
+                href = block1.locator1(href_selector).nth(href_index).get_attribute("href")
                 full_link = urljoin(base_url, href)
             except:
                 href = ""
