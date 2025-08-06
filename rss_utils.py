@@ -17,7 +17,8 @@ def generate_rss(items, output_path, base_url, gakkai_name):
         entry.title(item['title'])
         entry.link(href=item['link'])
         entry.description(item['description'])
-        entry.guid(item['link'], permalink=True)
+        guid_value = f"{item['link']}#{item['pub_date'].strftime('%Y%m%d')}"
+        entry.guid(guid_value, permalink=False)
         entry.pubDate(item['pub_date'])
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
