@@ -23,9 +23,13 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
             title = title_elem.inner_text().strip()
 
             # 日付
-            date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
+            try:
+                date_text = block2.locator(date_selector).nth(date_index).inner_text().strip()
+            except:
+                date_text = block2.inner_text().strip()
             pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
-            
+
+            # URL
             try:
                 href = block.locator1(href_selector).nth(href_index).get_attribute("href")
                 full_link = urljoin(base_url, href)
