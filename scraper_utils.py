@@ -1,7 +1,8 @@
+import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
-def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,max_items=10):
+def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index, href_selector, href_index, base_url, date_selector, date_index, date_format,date_regex,max_items=10):
     
     page.wait_for_selector(SELECTOR_TITLE, timeout=10000)
     
@@ -22,6 +23,7 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
             title_elem = block1.locator(title_selector).nth(title_index)
             title = title_elem.inner_text().strip()
             print(title)
+            
             # URL
             try:
                 href = block1.locator(href_selector).nth(href_index).get_attribute("href")
@@ -30,8 +32,8 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
                 href = ""
                 full_link = base_url
             print(full_link)
+            
             # 日付
-
             # date_selector が空文字や None でない場合 → 子要素探索、それ以外はそのまま
             if date_selector:
                 try:
@@ -45,9 +47,16 @@ def extract_items(page, SELECTOR_DATE,SELECTOR_TITLE,title_selector, title_index
                 except Exception as e:
                     print(f"⚠ 直接日付取得に失敗: {e}")
                     date_text = ""
+            
+            match = re.search(date_regex,date_text)
+            if match:
+                date_str = match.group()
+                pub_date = datetime.strptime(date_str, date_format).replace(tzinfo=timezone.utc)
+            else:
+                print("⚠ 日付の抽出に失敗しました")
 
-            pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
             print(pub_date)
+            
             if not title or not href:
                 print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）: title='{title}', href='{href}'")
                 continue
