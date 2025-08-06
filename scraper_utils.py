@@ -12,7 +12,9 @@ def extract_items(page, selector, title_selector, title_index, href_selector, hr
     for i in range(min(count, max_items)):
         try:
             block = blocks.nth(i)
-            pub_date = datetime.now(timezone.utc)
+
+            title = block.locator(date_selector).nth(date_index).inner_text().strip()
+            pub_date = datetime.strptime(date_text, date_format).replace(tzinfo=timezone.utc)
 
             title = block.locator(title_selector).nth(title_index).inner_text().strip()
 
