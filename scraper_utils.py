@@ -37,20 +37,30 @@ def extract_items(
     iframe_index=0,
     iframe_timeout=10000
 ):
-    root = _get_root_context(page, iframe_selector=iframe_selector, iframe_index=iframe_index, timeout=iframe_timeout)
+    root = _get_root_context(page, iframe_selector=iframe_selector,
+                             iframe_index=iframe_index, timeout=iframe_timeout)
 
-    # まずタイトル側の存在を待機
+    # 必須: タイトル側は待つ
+    if not SELECTOR_TITLE or not str(SELECTOR_TITLE).strip():
+        raise ValueError("SELECTOR_TITLE が空です。正しいセレクタを指定してください。")
     root.wait_for_selector(SELECTOR_TITLE, timeout=10000)
 
     blocks1 = root.locator(SELECTOR_TITLE)
-    blocks2 = root.locator(SELECTOR_DATE)
+
+    # ★ ここがポイント: SELECTOR_DATE が空/Noneなら blocks2 は使わず、後で block1 を使う
+    use_block1_for_date = (not SELECTOR_DATE) or (not str(SELECTOR_DATE).strip())
+    if not use_block1_for_date:
+        blocks2 = root.locator(SELECTOR_DATE)
+        count2 = blocks2.count()
+    else:
+        blocks2 = None
+        count2 = blocks1.count()
 
     count1 = blocks1.count()
-    count2 = blocks2.count()
     total = min(count1, count2, max_items)
 
     print(f"📦 発見した記事数(タイトル): {count1}")
-    print(f"📅 発見した日付ブロック数: {count2}")
+    print(f"📅 発見した日付ブロック数: {count2} ({'TITLEを使うフォールバック' if use_block1_for_date else 'DATEセレクタ使用'})")
     print(f"🔁 解析対象件数: {total}")
 
     items = []
@@ -58,7 +68,8 @@ def extract_items(
     for i in range(total):
         try:
             block1 = blocks1.nth(i)
-            block2 = blocks2.nth(i)
+            # ★ DATEセレクタが無ければ、日付抽出も block1 を母要素にする
+            block2 = block1 if use_block1_for_date else blocks2.nth(i)
 
             # タイトル
             if title_selector:
@@ -76,7 +87,6 @@ def extract_items(
                     href = block1.get_attribute("href")
             else:
                 href = block1.get_attribute("href")
-
             full_link = urljoin(base_url, href) if href else base_url
             print(full_link)
 
