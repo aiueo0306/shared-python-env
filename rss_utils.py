@@ -1,3 +1,7 @@
+from feedgen.feed import FeedGenerator
+from datetime import datetime, timezone
+import os
+
 def generate_rss(items, output_path, base_url, gakkai_name):
     fg = FeedGenerator()
     fg.title(f"{gakkai_name}トピックス")
