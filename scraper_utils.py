@@ -91,7 +91,7 @@ def extract_items(
             print(title)
 
             # --- URL（親<li>の範囲内で href_index から次候補を探索）
-            href = _get_first_attr_in_parent(block1, href_selector if title_selector else None, "href", href_index)
+            href = _get_first_attr_in_parent(block1, href_selector, "href", href_index)
             if href:
                 full_link = urljoin(base_url, href)
             else:
