@@ -6,6 +6,7 @@ def _get_first_text_in_parent(parent_locator, selector, start_index=0):
     """
     親ロケータ内の selector に一致する要素を start_index から順に調べ、
     最初にテキストを取得できた要素のテキストを返す（親範囲外には出ない）
+    ※ hidden 対応のため inner_text() ではなく text_content() を使用
     """
     try:
         elements = parent_locator.locator(selector)
@@ -14,7 +15,7 @@ def _get_first_text_in_parent(parent_locator, selector, start_index=0):
         return ""
     for idx in range(start_index, count):
         try:
-            txt = elements.nth(idx).inner_text().strip()
+            txt = (elements.nth(idx).text_content() or "").strip()
             if txt:
                 return txt
         except Exception:
@@ -64,52 +65,66 @@ def extract_items(
     date_regex,
     max_items=10
 ):
-    page.wait_for_selector(SELECTOR_TITLE, timeout=10000)
+    # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
+    page.wait_for_load_state("domcontentloaded")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=30000)
 
     blocks1 = page.locator(SELECTOR_TITLE)
-    count = blocks1.count()
+    count_titles = blocks1.count()
 
-    print(f"📦 発見した記事数: {count}")
+    print(f"📦 発見した記事数(タイトル側): {count_titles}")
     items = []
 
-    blocks2 = page.locator(SELECTOR_DATE)
+    # 日付セレクタは存在しない/別行数の可能性があるため独立して扱う
+    blocks2 = page.locator(SELECTOR_DATE) if SELECTOR_DATE else None
+    count_dates = blocks2.count() if blocks2 else 0
+    print(f"🗓 取得可能な日付ブロック数: {count_dates}")
 
-    for i in range(min(count, max_items)):
+    row_count = min(count_titles, max_items)
+
+    for i in range(row_count):
         try:
             block1 = blocks1.nth(i)
-            block2 = blocks2.nth(i)
+            block2 = blocks2.nth(i) if blocks2 and i < count_dates else None
 
-            # --- タイトル（親<li>の範囲内で title_index から次候補を探索）
+            # --- タイトル（hidden対策: text_content()）
             if title_selector:
                 title = _get_first_text_in_parent(block1, title_selector, title_index)
             else:
-                # セレクタ未指定なら親自身のテキスト
                 try:
-                    title = block1.inner_text().strip()
+                    title = (block1.text_content() or "").strip()
                 except Exception:
                     title = ""
+            if not title and title_selector:
+                # a要素のtitle属性フォールバック
+                try:
+                    maybe_title = block1.locator(title_selector).nth(title_index).get_attribute("title")
+                    if maybe_title:
+                        title = maybe_title.strip()
+                except Exception:
+                    pass
             print(title)
 
-            # --- URL（親<li>の範囲内で href_index から次候補を探索）
+            # --- URL
             href = _get_first_attr_in_parent(block1, href_selector, "href", href_index)
-            if href:
-                full_link = urljoin(base_url, href)
-            else:
-                full_link = base_url
+            full_link = urljoin(base_url, href) if href else base_url
             print(full_link)
 
-            # --- 日付テキスト（親<li>/日付ブロックの範囲内で date_index から次候補を探索）
+            # --- 日付テキスト（title列とdate列の行ズレに耐える）
+            date_text = ""
+            target_for_date = block2 if block2 else block1  # 無ければ同じ行のタイトル側からも探す
             if date_selector:
-                date_text = _get_first_text_in_parent(block2, date_selector, date_index)
+                date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
             else:
                 try:
-                    date_text = block2.inner_text().strip()
+                    date_text = (target_for_date.text_content() or "").strip()
                 except Exception as e:
                     print(f"⚠ 直接日付取得に失敗: {e}")
                     date_text = ""
             print(date_text)
 
-            # --- 日付パース（yyyy, mm, dd の3グループを想定）
+            # --- 日付パース（yyyy, mm, dd の3グループを想定した regex）
             pub_date = None
             try:
                 match = re.search(date_regex, date_text)
