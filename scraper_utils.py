@@ -130,16 +130,26 @@ def extract_items(
 
             print(date_text)
 
-            # --- 日付パース（yyyy, mm, dd の3グループを想定した regex）
+            # --- 日付パース（日本語 or 英語の月名に対応）
             pub_date = None
             try:
                 match = re.search(date_regex, date_text)
                 if match:
-                    year_str, month_str, day_str = match.groups()
-                    year = int(year_str)
-                    if year < 100:
-                        year += 2000  # 2桁西暦は2000年以降と仮定
-                    pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                    groups = match.groups()
+                    if len(groups) == 3:
+                        # case1: YYYY-MM-DD 形式
+                        if groups[0].isdigit():
+                            year_str, month_str, day_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                year += 2000  # 2桁西暦は2000年以降と仮定
+                            pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                        # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
+                        else:
+                            month_str, day_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{month_str} {day_str}, {year_str}", "%b %d, %Y"
+                            ).replace(tzinfo=timezone.utc)
                 else:
                     print("⚠ 日付の抽出に失敗しました")
             except Exception as e:
