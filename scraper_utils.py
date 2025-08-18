@@ -236,8 +236,7 @@ def extract_items(
             items.append(
                 {
                     "title": title,
-                    "link": base_url,
-                    # "link": full_link,         # ← 絶対URLを格納
+                    "link": full_link,         # ← 絶対URLを格納
                     "description": title,
                     "pub_date": pub_date,
                 }
