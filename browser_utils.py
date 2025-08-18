@@ -11,7 +11,7 @@ DEFAULT_UA = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
-def click_button_in_order(page, label: str, step_idx: int, timeout_ms: int = 12000, delay_before_click_ms: int = 2000) -> bool:
+def click_button_in_order(page, label: str, step_idx: int, timeout_ms: int = 12000, delay_before_click_ms: int = 5000) -> bool:
     """
     指定ラベルのボタン/テキストを（iframe含め）探索してクリック。成功で True。
     - ボタン(role=button → get_by_text → CSS) の順に探索
