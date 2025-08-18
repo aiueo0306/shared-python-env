@@ -166,82 +166,82 @@ def extract_items(
                         # --- 日付パース ---
                         # --- 日付パース（日本語 or 英語の月名に対応）
             # --- 日付パース（まず Y年M月D日 を最優先 → その後 MDY/DMY/英語/月欠損の順でフォールバック）---
-pub_date: Optional[datetime] = None
+            pub_date: Optional[datetime] = None
 
-def _num(s: str) -> int:
-    # 全角や「8月」「05日」などの非数字を除去してから数値化
-    return int(re.sub(r"\D", "", s or ""))
+            def _num(s: str) -> int:
+                # 全角や「8月」「05日」などの非数字を除去してから数値化
+                return int(re.sub(r"\D", "", s or ""))
 
-try:
-    match = re.search(date_regex, date_text)
-    if match:
-        groups = match.groups()
+            try:
+                match = re.search(date_regex, date_text)
+                if match:
+                    groups = match.groups()
 
-        if len(groups) == 3:
-            # 0) あなたの“基本ロジック”に相当：YMD（日本語の「年」「月」入り）を最優先
-            #    例: 2025年8月18日 / 2025 年 8 月 18 日
-            if ("年" in date_regex) and ("月" in date_regex):
-                y_str, m_str, d_str = groups
-                year = _num(y_str)
-                if year < 100:
-                    year += 2000
-                pub_date = datetime(year, _num(m_str), _num(d_str), tzinfo=timezone.utc)
+                    if len(groups) == 3:
+                        # 0) あなたの“基本ロジック”に相当：YMD（日本語の「年」「月」入り）を最優先
+                        #    例: 2025年8月18日 / 2025 年 8 月 18 日
+                        if ("年" in date_regex) and ("月" in date_regex):
+                            y_str, m_str, d_str = groups
+                            year = _num(y_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, _num(m_str), _num(d_str), tzinfo=timezone.utc)
 
-            # 1) 「6月 12, 2025」→ MDY
-            elif ("月" in date_regex) and ("," in date_regex):
-                mo_str, day_str, year_str = groups
-                year = _num(year_str)
-                if year < 100:
-                    year += 2000
-                pub_date = datetime(year, _num(mo_str), _num(day_str), tzinfo=timezone.utc)
+                        # 1) 「6月 12, 2025」→ MDY
+                        elif ("月" in date_regex) and ("," in date_regex):
+                            mo_str, day_str, year_str = groups
+                            year = _num(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, _num(mo_str), _num(day_str), tzinfo=timezone.utc)
 
-            # 2) 「08 8月 2025」→ DMY（日本語の「月」あり、カンマ/年の漢字なし）
-            elif ("月" in date_regex) and ("," not in date_regex) and ("年" not in date_regex):
-                day_str, mo_str, year_str = groups
-                year = _num(year_str)
-                if year < 100:
-                    year += 2000
-                pub_date = datetime(year, _num(mo_str), _num(day_str), tzinfo=timezone.utc)
+                        # 2) 「08 8月 2025」→ DMY（日本語の「月」あり、カンマ/年の漢字なし）
+                        elif ("月" in date_regex) and ("," not in date_regex) and ("年" not in date_regex):
+                            day_str, mo_str, year_str = groups
+                            year = _num(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, _num(mo_str), _num(day_str), tzinfo=timezone.utc)
 
-            # 3) 英語短縮月名: Aug 6, 2025 → MDY
-            elif any(mon in date_regex for mon in ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")):
-                month_str, day_str, year_str = groups
-                pub_date = datetime.strptime(
-                    f"{month_str} {int(_num(day_str))}, {int(_num(year_str))}", "%b %d, %Y"
-                ).replace(tzinfo=timezone.utc)
+                        # 3) 英語短縮月名: Aug 6, 2025 → MDY
+                        elif any(mon in date_regex for mon in ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")):
+                            month_str, day_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{month_str} {int(_num(day_str))}, {int(_num(year_str))}", "%b %d, %Y"
+                            ).replace(tzinfo=timezone.utc)
 
-            # 4) 英語フル月名: 6 August 2025 → DMY
-            elif any(name in date_regex for name in (
-                "January","February","March","April","May","June","July","August",
-                "September","October","November","December"
-            )):
-                day_str, month_str, year_str = groups
-                pub_date = datetime.strptime(
-                    f"{int(_num(day_str))} {month_str} {int(_num(year_str))}", "%d %B %Y"
-                ).replace(tzinfo=timezone.utc)
+                        # 4) 英語フル月名: 6 August 2025 → DMY
+                        elif any(name in date_regex for name in (
+                            "January","February","March","April","May","June","July","August",
+                            "September","October","November","December"
+                        )):
+                            day_str, month_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{int(_num(day_str))} {month_str} {int(_num(year_str))}", "%d %B %Y"
+                            ).replace(tzinfo=timezone.utc)
 
-            # 5) それ以外は数値YMD（2025.08.06 / 2025-8-6 / 2025/08/06 など）
-            else:
-                year_str, month_str, day_str = groups
-                year = _num(year_str)
-                if year < 100:
-                    year += 2000
-                pub_date = datetime(year, _num(month_str), _num(day_str), tzinfo=timezone.utc)
+                        # 5) それ以外は数値YMD（2025.08.06 / 2025-8-6 / 2025/08/06 など）
+                        else:
+                            year_str, month_str, day_str = groups
+                            year = _num(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, _num(month_str), _num(day_str), tzinfo=timezone.utc)
 
-        elif len(groups) == 2 and all(g is not None for g in groups):
-            # YYYY.MM（年と月のみ）→ day=1 補完
-            y, mo = groups
-            year = _num(y)
-            if year < 100:
-                year += 2000
-            pub_date = datetime(year, _num(mo), 1, tzinfo=timezone.utc)
-        else:
-            print("⚠ 想定外のグループ構成でした（date_regexを見直してください）")
-    else:
-        print("⚠ 日付の抽出に失敗しました（正規表現にマッチしません）")
-except Exception as e:
-    print(f"⚠ 日付パースに失敗: {e}")
-    pub_date = None
+                    elif len(groups) == 2 and all(g is not None for g in groups):
+                        # YYYY.MM（年と月のみ）→ day=1 補完
+                        y, mo = groups
+                        year = _num(y)
+                        if year < 100:
+                            year += 2000
+                        pub_date = datetime(year, _num(mo), 1, tzinfo=timezone.utc)
+                    else:
+                        print("⚠ 想定外のグループ構成でした（date_regexを見直してください）")
+                else:
+                    print("⚠ 日付の抽出に失敗しました（正規表現にマッチしません）")
+            except Exception as e:
+                print(f"⚠ 日付パースに失敗: {e}")
+                pub_date = None
 
 
 
