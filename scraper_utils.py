@@ -158,13 +158,15 @@ def extract_items(
             print(date_text)
 
             # --- 日付パース（日本語 or 英語の月名に対応）
+                        # --- 日付パース（日本語 or 英語の月名に対応）
             pub_date: Optional[datetime] = None
             try:
                 match = re.search(date_regex, date_text)
                 if match:
                     groups = match.groups()
+
                     if len(groups) == 3:
-                        # case1: YYYY-MM-DD 形式（先頭が数字なら年とみなす）
+                        # case1: YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD （先頭が数字なら年とみなす）
                         if groups[0].isdigit():
                             year_str, month_str, day_str = groups
                             year = int(year_str)
@@ -172,18 +174,29 @@ def extract_items(
                                 # 2桁西暦は 2000 年代と仮定
                                 year += 2000
                             pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
-                        # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
                         else:
+                            # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
                             month_str, day_str, year_str = groups
                             pub_date = datetime.strptime(
                                 f"{month_str} {day_str}, {year_str}",
                                 "%b %d, %Y",
                             ).replace(tzinfo=timezone.utc)
+
+                    elif len(groups) == 2 and all(g is not None and re.fullmatch(r"\d{1,4}", g) for g in groups):
+                        # case3: YYYY.MM（年と月のみ）→ day=1 補完
+                        y, mo = groups
+                        y_i = int(y)
+                        if y_i < 100:
+                            y_i += 2000
+                        pub_date = datetime(y_i, int(mo), 1, tzinfo=timezone.utc)
                     else:
-                        print("⚠ 日付の抽出に失敗しました")
+                        print("⚠ 想定外のグループ構成でした（date_regexを見直してください）")
+                else:
+                    print("⚠ 日付の抽出に失敗しました（正規表現にマッチしません）")
             except Exception as e:
                 print(f"⚠ 日付パースに失敗: {e}")
                 pub_date = None
+
             print(pub_date)
 
             # --- 必須フィールドチェック
