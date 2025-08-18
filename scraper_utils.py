@@ -4,8 +4,7 @@ Playwright ロケータからニュース記事を抽出するユーティリテ
 
 - hidden 要素対策として text_content() を使用
 - タイトル列と日付列の行ズレにある程度耐性あり
-- 渡された date_regex（呼び出し側指定）を最優先で試し、ヒットしなければ
-  本モジュール内の「既出パターン」を順に試して柔軟にパース
+- 日本語(YYYY-MM-DD 等)／英語月名(Mon DD, YYYY)を正規表現でパース
 - href は base_url と結合して絶対URL化
 
 Note:
@@ -18,110 +17,6 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 from typing import Any, Dict, List, Optional
-
-# ---- 全角→半角の数字変換（例：２０２５→2025） ----
-_ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
-
-def _to_halfwidth_digits(s: str) -> str:
-    return (s or "").translate(_ZEN2HAN)
-
-# 既出の英語月名（短縮/フル）
-_EN_SHORT = ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-_EN_LONG  = ("January","February","March","April","May","June","July","August","September","October","November","December")
-
-# ---- 既出パターン（正規表現）----
-# ※ここに “新規に判明した表記” を追記していく（呼び出し側の引数は増やさない）
-_KNOWN_DATE_REGEXES: List[str] = [
-    r"(\d{2,4})\.(\d{1,2})\.(\d{1,2})",                       # 2025.08.06 / 2025.8.6
-    r"(\d{2,4})[/-](\d{1,2})[/-](\d{1,2})",                   # 2025/08/06 or 2025-8-6
-    r"(\d{2,4})\.(\d{1,2})",                                  # 2024.10（年.月 → day=1 補完）
-    r"(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?",     # 2025年8月6日（末尾 日 任意）
-    r"(\d{1,2})\s*月\s*(\d{1,2}),\s*(\d{4})",                 # 6月 12, 2025（日本語月 + 英語カンマ）
-    r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})",  # Aug 6, 2025
-    r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})",  # 6 August 2025
-]
-
-def _try_parse_with_regex(txt: str, rgx: str) -> Optional[datetime]:
-    """
-    1つの既出パターン正規表現 rgx を使って txt を datetime(UTC) に変換して返す。
-    ヒットしなければ None。
-    """
-    m = re.search(rgx, txt, re.IGNORECASE)
-    if not m:
-        return None
-    groups = m.groups()
-
-    # --- 3 数字（Y,M,D）: 例 2025.08.06 / 2025-8-6 / 2025/08/06 ---
-    if len(groups) == 3 and all(g is not None and re.fullmatch(r"\d{1,4}", g) for g in groups):
-        y, mo, d = groups
-        y_i = int(y)
-        if y_i < 100:  # 2桁西暦は 2000年代とみなす
-            y_i += 2000
-        return datetime(y_i, int(mo), int(d), tzinfo=timezone.utc)
-
-    # --- 2 数字（Y,M）: 例 2024.10 → day=1 補完 ---
-    if len(groups) == 2 and all(g is not None and re.fullmatch(r"\d{1,4}", g) for g in groups):
-        y, mo = groups
-        y_i = int(y)
-        if y_i < 100:
-            y_i += 2000
-        return datetime(y_i, int(mo), 1, tzinfo=timezone.utc)
-
-    # --- 和文: Y年M月D日（末尾「日」省略も regex 側で許容）---
-    if len(groups) == 3 and ("年" in rgx and "月" in rgx):
-        y, mo, d = groups
-        y_i = int(y)
-        if y_i < 100:
-            y_i += 2000
-        return datetime(y_i, int(mo), int(d), tzinfo=timezone.utc)
-
-    # --- 和英ミックス: M月 D, YYYY ---
-    if len(groups) == 3 and ("月" in rgx and "," in rgx):
-        mo, d, y = groups
-        y_i = int(y)
-        if y_i < 100:
-            y_i += 2000
-        return datetime(y_i, int(mo), int(d), tzinfo=timezone.utc)
-
-    # --- 英語短縮月名: Mon DD, YYYY ---
-    if len(groups) == 3 and any(mon in rgx for mon in _EN_SHORT):
-        mon, d, y = groups
-        dt = datetime.strptime(f"{mon} {d}, {y}", "%b %d, %Y")
-        return dt.replace(tzinfo=timezone.utc)
-
-    # --- 英語フル月名: DD Month YYYY ---
-    if len(groups) == 3 and any(name in rgx for name in _EN_LONG):
-        d, mon, y = groups
-        dt = datetime.strptime(f"{d} {mon} {y}", "%d %B %Y")
-        return dt.replace(tzinfo=timezone.utc)
-
-    # 既出パターンの範囲外 → None
-    return None
-
-
-def _parse_pub_date(date_text: str, primary_regex: str) -> Optional[datetime]:
-    """
-    呼び出し側が渡した primary_regex を最初に試し、
-    ヒットしなければ本モジュール内の既出パターンを順に試す。
-    """
-    txt = _to_halfwidth_digits((date_text or "").strip())
-    if not txt:
-        return None
-
-    # 1) 呼び出し側の正規表現を最初に試す
-    tried = set()
-    for rgx in [primary_regex] + [r for r in _KNOWN_DATE_REGEXES if r != primary_regex]:
-        if rgx in tried:
-            continue
-        tried.add(rgx)
-        try:
-            dt = _try_parse_with_regex(txt, rgx)
-            if dt is not None:
-                return dt
-        except Exception as e:
-            print(f"⚠ パターン処理失敗: {e}")
-            continue
-    return None
 
 
 def _get_first_text_in_parent(parent_locator, selector: Optional[str], start_index: int = 0) -> str:
@@ -193,7 +88,7 @@ def extract_items(
     date_selector: Optional[str],
     date_index: int,
     date_format: Optional[str],  # 互換のため残す（未使用）
-    date_regex: str,             # 呼び出し側が渡す単体パターン（最優先）
+    date_regex: str,
     max_items: int = 10,
 ) -> List[Dict[str, Any]]:
     """
@@ -202,7 +97,7 @@ def extract_items(
     Returns:
         List[Dict]: [{"title": str, "link": str, "description": str, "pub_date": datetime|None}, ...]
     """
-    # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）---
+    # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
     page.wait_for_load_state("domcontentloaded")
     page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=30000)
 
@@ -224,7 +119,7 @@ def extract_items(
             block1 = blocks1.nth(i)
             block2 = blocks2.nth(i) if (blocks2 and i < count_dates) else None
 
-            # --- タイトル（hidden対策: text_content()）---
+            # --- タイトル（hidden対策: text_content()）
             if title_selector:
                 title = _get_first_text_in_parent(block1, title_selector, title_index)
             else:
@@ -234,3 +129,79 @@ def extract_items(
                     title = ""
 
             if not title and title_selector:
+                # a要素のtitle属性フォールバック
+                try:
+                    maybe_title = block1.locator(title_selector).nth(title_index).get_attribute("title")
+                    if maybe_title:
+                        title = maybe_title.strip()
+                except Exception:
+                    pass
+            print(title)
+
+            # --- URL
+            href = _get_first_attr_in_parent(block1, href_selector, "href", href_index)
+            full_link = urljoin(base_url, href) if href else base_url
+            print(full_link)
+
+            # --- 日付テキスト（title列とdate列の行ズレに耐える）
+            date_text = ""
+            target_for_date = block2 if block2 else block1  # 無ければ同じ行のタイトル側からも探す
+
+            if date_selector:
+                date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
+            else:
+                try:
+                    date_text = (target_for_date.text_content() or "").strip()
+                except Exception as e:
+                    print(f"⚠ 直接日付取得に失敗: {e}")
+                    date_text = ""
+            print(date_text)
+
+            # --- 日付パース（日本語 or 英語の月名に対応）
+            pub_date: Optional[datetime] = None
+            try:
+                match = re.search(date_regex, date_text)
+                if match:
+                    groups = match.groups()
+                    if len(groups) == 3:
+                        # case1: YYYY-MM-DD 形式（先頭が数字なら年とみなす）
+                        if groups[0].isdigit():
+                            year_str, month_str, day_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                # 2桁西暦は 2000 年代と仮定
+                                year += 2000
+                            pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                        # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
+                        else:
+                            month_str, day_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{month_str} {day_str}, {year_str}",
+                                "%b %d, %Y",
+                            ).replace(tzinfo=timezone.utc)
+                    else:
+                        print("⚠ 日付の抽出に失敗しました")
+            except Exception as e:
+                print(f"⚠ 日付パースに失敗: {e}")
+                pub_date = None
+            print(pub_date)
+
+            # --- 必須フィールドチェック
+            if not title or not href:
+                print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）: title='{title}', href='{href}'")
+                continue
+
+            items.append(
+                {
+                    "title": title,
+                    "link": full_link,         # ← 絶対URLを格納
+                    "description": title,
+                    "pub_date": pub_date,
+                }
+            )
+
+        except Exception as e:
+            print(f"⚠ 行{i+1}の解析に失敗: {e}")
+            continue
+
+    return items
