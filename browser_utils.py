@@ -1,3 +1,16 @@
+# browser_utils.py
+import re
+import time
+from contextlib import contextmanager
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
+DEFAULT_VIEWPORT = {"width": 1366, "height": 900}
+DEFAULT_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
 def click_button_in_order(page, label: str, step_idx: int, timeout_ms: int = 12000, delay_before_click_ms: int = 0) -> bool:
     """
     指定ラベルの要素（ボタン/リンク/その他）を探索してクリック。成功で True。
