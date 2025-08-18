@@ -164,81 +164,69 @@ def extract_items(
             
                         # --- 日付パース（日本語 or 英語の月名に対応）
                         # --- 日付パース ---
+                        # --- 日付パース（日本語 or 英語の月名に対応）
             pub_date: Optional[datetime] = None
-
-            # 1) まずはあなたの基本ロジックをそのまま実行（数値YMD想定）
             try:
                 match = re.search(date_regex, date_text)
                 if match:
-                    year_str, month_str, day_str = match.groups()
-                    year = int(year_str)
-                    if year < 100:
-                        year += 2000  # 2桁西暦は2000年以降と仮定
-                    pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                    groups = match.groups()
+
+                    if len(groups) == 3:
+                        # 1) 「6月 12, 2025」など → MDY として扱う
+                        if ("月" in date_regex) and ("," in date_regex):
+                            mo_str, day_str, year_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, int(mo_str), int(day_str), tzinfo=timezone.utc)
+
+                        # 2) 「08 8月 2025」など → DMY として扱う（日本語の「月」あり、カンマ/年の漢字なし）
+                        elif ("月" in date_regex) and ("," not in date_regex) and ("年" not in date_regex):
+                            day_str, mo_str, year_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, int(mo_str), int(day_str), tzinfo=timezone.utc)
+
+                        # 3) 英語短縮月名: Aug 6, 2025
+                        elif any(mon in date_regex for mon in ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")):
+                            month_str, day_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{month_str} {day_str}, {year_str}", "%b %d, %Y"
+                            ).replace(tzinfo=timezone.utc)
+
+                        # 4) 英語フル月名: 6 August 2025
+                        elif any(name in date_regex for name in (
+                            "January","February","March","April","May","June","July","August",
+                            "September","October","November","December"
+                        )):
+                            day_str, month_str, year_str = groups
+                            pub_date = datetime.strptime(
+                                f"{day_str} {month_str} {year_str}", "%d %B %Y"
+                            ).replace(tzinfo=timezone=utf)
+
+                        # 5) それ以外は数値YMD（2025.08.06 / 2025-8-6 / 2025/08/06 など）
+                        else:
+                            year_str, month_str, day_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+
+                    elif len(groups) == 2 and all(g is not None and re.fullmatch(r"\d{1,4}", g) for g in groups):
+                        # YYYY.MM（年と月のみ）→ day=1 補完
+                        y, mo = groups
+                        y_i = int(y)
+                        if y_i < 100:
+                            y_i += 2000
+                        pub_date = datetime(y_i, int(mo), 1, tzinfo=timezone.utc)
+                    else:
+                        print("⚠ 想定外のグループ構成でした（date_regexを見直してください）")
                 else:
-                    print("⚠ 日付の抽出に失敗しました")
+                    print("⚠ 日付の抽出に失敗しました（正規表現にマッチしません）")
             except Exception as e:
                 print(f"⚠ 日付パースに失敗: {e}")
                 pub_date = None
-
-            # 2) フォールバック（基本ロジックで取れなかった場合のみ）
-            if pub_date is None:
-                import unicodedata
-                def _norm(s: str) -> str:
-                    # 全角→半角、前後空白除去
-                    return unicodedata.normalize("NFKC", s or "").strip()
-                def _num(s: str) -> int:
-                    # 日本語「8月」「05日」等でも数字だけ抽出
-                    return int(re.sub(r"\D", "", _norm(s)))
-                def _year(s: str) -> int:
-                    y = _num(s)
-                    return y + 2000 if y < 100 else y
-
-                txt = _norm(date_text)
-
-                fallbacks = [
-                    ("YMD_kanji", re.compile(r"(\d{2,4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?")),
-                    ("MDY_ja_month", re.compile(r"(\d{1,2})\s*月\s*(\d{1,2})\s*,\s*(\d{2,4})")),
-                    ("DMY_ja_month", re.compile(r"(\d{1,2})\s*(\d{1,2})\s*月\s*(\d{2,4})")),
-                    ("YMD_anysep", re.compile(r"(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})")),
-                    ("MDY_en_short", re.compile(r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s*,\s*(\d{4})", re.I)),
-                    ("DMY_en_long", re.compile(r"(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})", re.I)),
-                    ("YM_dot", re.compile(r"(\d{2,4})\.(\d{1,2})")),  # day=1 補完
-                ]
-
-                for tag, rx in fallbacks:
-                    m2 = rx.search(txt)
-                    if not m2:
-                        continue
-                    g = m2.groups()
-                    try:
-                        if tag == "YMD_kanji":
-                            y, mo, d = g
-                            pub_date = datetime(_year(y), _num(mo), _num(d), tzinfo=timezone.utc)
-                        elif tag == "MDY_ja_month":      # 6月 12, 2025
-                            mo, d, y = g
-                            pub_date = datetime(_year(y), _num(mo), _num(d), tzinfo=timezone.utc)
-                        elif tag == "DMY_ja_month":      # 08 8月 2025
-                            d, mo, y = g
-                            pub_date = datetime(_year(y), _num(mo), _num(d), tzinfo=timezone.utc)
-                        elif tag == "YMD_anysep":        # 2025-08-06 / 2025.8.6 / 2025/08/06
-                            y, mo, d = g
-                            pub_date = datetime(_year(y), _num(mo), _num(d), tzinfo=timezone.utc)
-                        elif tag == "MDY_en_short":      # Aug 6, 2025
-                            mon, d, y = g
-                            pub_date = datetime.strptime(f"{mon} {int(d)}, {int(y)}", "%b %d, %Y").replace(tzinfo=timezone.utc)
-                        elif tag == "DMY_en_long":       # 6 August 2025
-                            d, mon, y = g
-                            pub_date = datetime.strptime(f"{int(d)} {mon} {int(y)}", "%d %B %Y").replace(tzinfo=timezone.utc)
-                        elif tag == "YM_dot":            # 2024.10 → day=1
-                            y, mo = g
-                            pub_date = datetime(_year(y), _num(mo), 1, tzinfo=timezone.utc)
-
-                        if pub_date is not None:
-                            break
-                    except Exception as e2:
-                        print(f"ℹ フォールバック '{tag}' 失敗: {e2}")
-                        continue
 
 
 
