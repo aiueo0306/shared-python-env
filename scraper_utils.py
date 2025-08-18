@@ -203,7 +203,7 @@ def extract_items(
                             day_str, month_str, year_str = groups
                             pub_date = datetime.strptime(
                                 f"{day_str} {month_str} {year_str}", "%d %B %Y"
-                            ).replace(tzinfo=timezone=utf)
+                            ).replace(tzinfo=timezone.utc)
 
                         # 5) それ以外は数値YMD（2025.08.06 / 2025-8-6 / 2025/08/06 など）
                         else:
