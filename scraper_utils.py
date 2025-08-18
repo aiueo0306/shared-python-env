@@ -160,6 +160,8 @@ def extract_items(
             # --- 日付パース（日本語 or 英語の月名に対応）
                         # --- 日付パース（日本語 or 英語の月名に対応）
                         # --- 日付パース（日本語 or 英語の月名に対応）
+                      # --- 日付パース（日本語 or 英語の月名に対応）
+            
             pub_date: Optional[datetime] = None
             try:
                 match = re.search(date_regex, date_text)
@@ -175,14 +177,22 @@ def extract_items(
                                 year += 2000
                             pub_date = datetime(year, int(mo_str), int(day_str), tzinfo=timezone.utc)
 
-                        # 2) 英語短縮月名: Aug 6, 2025
+                        # 2) 「08 8月 2025」など → DMY として扱う（日本語の「月」あり、カンマ/年の漢字なし）
+                        elif ("月" in date_regex) and ("," not in date_regex) and ("年" not in date_regex):
+                            day_str, mo_str, year_str = groups
+                            year = int(year_str)
+                            if year < 100:
+                                year += 2000
+                            pub_date = datetime(year, int(mo_str), int(day_str), tzinfo=timezone.utc)
+
+                        # 3) 英語短縮月名: Aug 6, 2025
                         elif any(mon in date_regex for mon in ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")):
                             month_str, day_str, year_str = groups
                             pub_date = datetime.strptime(
                                 f"{month_str} {day_str}, {year_str}", "%b %d, %Y"
                             ).replace(tzinfo=timezone.utc)
 
-                        # 3) 英語フル月名: 6 August 2025
+                        # 4) 英語フル月名: 6 August 2025
                         elif any(name in date_regex for name in (
                             "January","February","March","April","May","June","July","August",
                             "September","October","November","December"
@@ -190,9 +200,9 @@ def extract_items(
                             day_str, month_str, year_str = groups
                             pub_date = datetime.strptime(
                                 f"{day_str} {month_str} {year_str}", "%d %B %Y"
-                            ).replace(tzinfo=timezone.utc)
+                            ).replace(tzinfo=timezone=utf)
 
-                        # 4) それ以外は数値YMD
+                        # 5) それ以外は数値YMD（2025.08.06 / 2025-8-6 / 2025/08/06 など）
                         else:
                             year_str, month_str, day_str = groups
                             year = int(year_str)
@@ -214,6 +224,7 @@ def extract_items(
             except Exception as e:
                 print(f"⚠ 日付パースに失敗: {e}")
                 pub_date = None
+
 
             print(pub_date)
 
