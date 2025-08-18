@@ -164,7 +164,8 @@ def extract_items(
 
             items.append({
                 "title": title,
-                "link": full_link,
+                # "link": full_link,
+                "link": base_url,
                 "description": title,
                 "pub_date": pub_date
             })
