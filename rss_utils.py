@@ -21,7 +21,7 @@ def generate_rss(items, output_path, base_url, gakkai_name):
         if item['pub_date'] is not None:
             guid_value = f"{item['link']}#{item['pub_date'].strftime('%Y%m%d')}"
             entry.guid(guid_value, permalink=False)
-            # entry.pubDate(item['pub_date'])
+            entry.pubDate(item['pub_date'])
         else:
             # 日付がない場合はリンクそのものをGUIDにしてpermalink=True
             entry.guid(item['link'], permalink=True)
