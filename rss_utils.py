@@ -15,7 +15,7 @@ def generate_rss(items, output_path, base_url, gakkai_name):
     for item in items:
         entry = fg.add_entry()
         entry.title(item['title'])
-        entry.link(href=item['link'])
+        entry.link(href=base_url)
         entry.description(item['description'])
 
         if item['pub_date'] is not None:
