@@ -2,7 +2,71 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
+# ------- 追加: 全角→半角、2桁西暦補正などのユーティリティ -------
+_ZEN2HAN = str.maketrans("０１２３４５６７８９", "0123456789")
 
+def _to_halfwidth_digits(s: str) -> str:
+    return (s or "").translate(_ZEN2HAN)
+
+def _safe_int(x: str) -> int:
+    return int(_to_halfwidth_digits(x))
+
+def _coerce_year(y: int) -> int:
+    # 2桁西暦は 2000年代扱い（必要なら調整）
+    return y + 2000 if y < 100 else y
+
+def parse_pub_date(date_text: str, date_patterns: list):
+    """
+    複数パターンを順に試して UTC の datetime を返す。
+    date_patterns: [{
+        "regex": r"...",          # キャプチャは2 or 3個想定
+        "order": "YMD|MDY|DMY|YM",# groupsの意味順
+        "allow_missing_day": bool # Trueなら日欠損を day=1 で補完（YM 等）
+    }, ...]
+    """
+    txt = _to_halfwidth_digits((date_text or "").strip())
+    if not txt or not date_patterns:
+        return None
+
+    for pat in date_patterns:
+        try:
+            rgx = pat.get("regex")
+            order = (pat.get("order") or "YMD").upper()
+            allow_missing_day = bool(pat.get("allow_missing_day", False))
+            if not rgx:
+                continue
+
+            m = re.search(rgx, txt, re.IGNORECASE)
+            if not m:
+                continue
+
+            groups = list(m.groups())
+
+            # 2グループ（例: YYYY.MM）の場合に日を補完
+            if len(groups) == 2 and allow_missing_day:
+                if order == "YM":
+                    groups = [groups[0], groups[1], "1"]  # Y, M, (D=1)
+                elif order == "MY":
+                    groups = [groups[1], groups[0], "1"]  # (Yに入れ替え), M, D=1
+
+            if len(groups) != 3:
+                continue
+
+            # Y/M/D の値を order に従って決定
+            idx = {"Y": order.index("Y"), "M": order.index("M"), "D": order.index("D")}
+            gY, gM, gD = groups[idx["Y"]], groups[idx["M"]], groups[idx["D"]]
+
+            year = _coerce_year(_safe_int(gY))
+            month = _safe_int(gM)
+            day = _safe_int(gD)
+
+            return datetime(int(year), int(month), int(day), tzinfo=timezone.utc)
+        except Exception:
+            continue
+
+    return None
+
+# ------- 既存ヘルパー -------
 def _get_first_text_in_parent(parent_locator, selector, start_index=0):
     """
     親ロケータ内の selector に一致する要素を start_index から順に調べ、
@@ -23,7 +87,6 @@ def _get_first_text_in_parent(parent_locator, selector, start_index=0):
         except Exception:
             continue
     return ""
-
 
 def _get_first_attr_in_parent(parent_locator, selector, attr, start_index=0):
     """
@@ -46,14 +109,13 @@ def _get_first_attr_in_parent(parent_locator, selector, attr, start_index=0):
                 continue
         return None
     else:
-        # 親自身が <a> 等で href を持つケース
         try:
             val = parent_locator.get_attribute(attr)
             return val
         except Exception:
             return None
 
-
+# ------- ここを拡張（date_patterns 追加 & 後方互換維持） -------
 def extract_items(
     page,
     SELECTOR_DATE,
@@ -65,9 +127,10 @@ def extract_items(
     base_url,
     date_selector,
     date_index,
-    date_format,  # 互換のため残す（未使用）
+    date_format,  # 互換のため残す（未使用でもOK）
     date_regex,
-    max_items=10
+    max_items=10,
+    date_patterns=None  # ← 追加（複数パターン用）
 ):
     # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
     page.wait_for_load_state("domcontentloaded")
@@ -129,28 +192,32 @@ def extract_items(
 
             print(date_text)
 
-            # --- 日付パース（日本語 or 英語の月名に対応）
+            # --- 日付パース（複数パターン or 従来ロジック）
             pub_date = None
             try:
-                match = re.search(date_regex, date_text)
-                if match:
-                    groups = match.groups()
-                    if len(groups) == 3:
-                        # case1: YYYY-MM-DD 形式
-                        if groups[0].isdigit():
-                            year_str, month_str, day_str = groups
-                            year = int(year_str)
-                            if year < 100:
-                                year += 2000  # 2桁西暦は2000年以降と仮定
-                            pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
-                        # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
-                        else:
-                            month_str, day_str, year_str = groups
-                            pub_date = datetime.strptime(
-                                f"{month_str} {day_str}, {year_str}", "%b %d, %Y"
-                            ).replace(tzinfo=timezone.utc)
+                if date_patterns:
+                    pub_date = parse_pub_date(date_text, date_patterns)
                 else:
-                    print("⚠ 日付の抽出に失敗しました")
+                    # 従来ロジック（後方互換）
+                    match = re.search(date_regex, date_text)
+                    if match:
+                        groups = match.groups()
+                        if len(groups) == 3:
+                            # case1: YYYY-MM-DD 形式
+                            if groups[0].isdigit():
+                                year_str, month_str, day_str = groups
+                                year = int(year_str)
+                                if year < 100:
+                                    year += 2000  # 2桁西暦は2000年以降と仮定
+                                pub_date = datetime(year, int(month_str), int(day_str), tzinfo=timezone.utc)
+                            # case2: Mon DD, YYYY 形式 (例: Aug 6, 2025)
+                            else:
+                                month_str, day_str, year_str = groups
+                                pub_date = datetime.strptime(
+                                    f"{month_str} {day_str}, {year_str}", "%b %d, %Y"
+                                ).replace(tzinfo=timezone.utc)
+                    else:
+                        print("⚠ 日付の抽出に失敗しました")
             except Exception as e:
                 print(f"⚠ 日付パースに失敗: {e}")
                 pub_date = None
