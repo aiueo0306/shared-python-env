@@ -1,5 +1,6 @@
 from feedgen.feed import FeedGenerator
 from datetime import datetime, timezone
+from hashlib import sha1
 import os
 
 def generate_rss(items, output_path, base_url, gakkai_name):
@@ -14,19 +15,35 @@ def generate_rss(items, output_path, base_url, gakkai_name):
 
     for item in items:
         entry = fg.add_entry()
-        entry.title(item['title'])
-        entry.link(href=base_url)
-        entry.description(item['description'])
+        title = item.get('title') or ''
+        link = item.get('link') or None
+        desc = item.get('description') or title
+        pub_date = item.get('pub_date')
 
-        if item['pub_date'] is not None:
-            guid_value = f"{item['link']}#{item['pub_date'].strftime('%Y%m%d')}"
+        # エントリの表示用リンク：あればそれ、なければ base_url
+        entry.title(title)
+        entry.link(href=link or base_url)
+        entry.description(desc)
+
+        if pub_date is not None:
+            # pub_date あり → permalink=False で (リンク or base_url)#YYYYMMDD をGUIDに
+            guid_value = f"{(link or base_url)}#{pub_date.strftime('%Y%m%d')}"
             entry.guid(guid_value, permalink=False)
-            entry.pubDate(item['pub_date'])
+            entry.pubDate(pub_date)
         else:
-            # 日付がない場合はリンクそのものをGUIDにしてpermalink=True
-            entry.guid(item['link'], permalink=True)
-            # pubDateは設定しない
+            if link:
+                # pub_date なし & リンクあり → リンク自体をGUID（permalink=True）
+                entry.guid(link, permalink=True)
+            else:
+                # pub_date なし & リンクなし → タイトルから安定GUID（permalink=False）
+                # base_url とタイトルで安定ハッシュを作成（衝突回避用に prefix を付加）
+                digest = sha1(f"{base_url}|{title}".encode('utf-8')).hexdigest()
+                entry.guid(f"urn:newsitem:{digest}", permalink=False)
+                # pubDate は設定しない
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    dirpath = os.path.dirname(output_path)
+    if dirpath:
+        os.makedirs(dirpath, exist_ok=True)
+
     fg.rss_file(output_path)
     print(f"\n✅ RSSフィード生成完了！📄 保存先: {output_path}")
