@@ -248,8 +248,8 @@ def extract_items(
             print(pub_date)
 
             # --- 必須フィールドチェック
-            if not title or not href:
-                print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）: title='{title}', href='{href}'")
+            if not title:
+                print(f"⚠ タイトルが空のためスキップ（{i+1}行目）")
                 continue
 
             items.append(
