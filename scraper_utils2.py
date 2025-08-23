@@ -92,14 +92,14 @@ def extract_items_iframe(
     date_format: Optional[str],
     date_regex: str,
     max_items: int = 10,
+    # ▼ 追加オプション（デフォルトは従来挙動）
+    iframe_index: int = 0,
+    timeout_ms: int = 30000,
 ) -> List[Dict[str, Any]]:
-    """
-    Playwright の `iframe` 内から記事リストを抽出する。
-    """
-    # --- iframe を取得
+
     try:
-        page.wait_for_selector(iframe_selector, timeout=10000)
-        handle = page.locator(iframe_selector).first.element_handle()
+        page.wait_for_selector(iframe_selector, timeout=timeout_ms)
+        handle = page.locator(iframe_selector).nth(iframe_index).element_handle()
         if not handle:
             print("⚠ iframeが見つかりませんでした")
             return []
@@ -111,8 +111,13 @@ def extract_items_iframe(
         print(f"⚠ iframe 解決に失敗: {e}")
         return []
 
-    # --- 以降は extract_items とほぼ同じ流れ（frame を root として処理）
-    frame.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=30000)
+    # ここを追加：ロード状態の安定化
+    try:
+        frame.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
+    except Exception:
+        pass
+
+    frame.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=timeout_ms)
 
     blocks1 = frame.locator(SELECTOR_TITLE)
     count_titles = blocks1.count()
@@ -130,7 +135,7 @@ def extract_items_iframe(
             block1 = blocks1.nth(i)
             block2 = blocks2.nth(i) if (blocks2 and i < count_dates) else None
 
-            # --- タイトル
+            # タイトル
             if title_selector:
                 title = _get_first_text_in_parent(block1, title_selector, title_index)
             else:
@@ -148,13 +153,12 @@ def extract_items_iframe(
                     pass
             print(title)
 
-            # --- URL
+            # URL
             href = _get_first_attr_in_parent(block1, href_selector, "href", href_index)
             full_link = urljoin(base_url, href) if href else base_url
             print(full_link)
 
-            # --- 日付
-            date_text = ""
+            # 日付
             target_for_date = block2 if block2 else block1
             if date_selector:
                 date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
@@ -166,27 +170,29 @@ def extract_items_iframe(
                     date_text = ""
             print(date_text)
 
-            # --- 日付パース（1個目のロジックをそのまま流用）
+            # パース（既存ロジック）
             pub_date: Optional[datetime] = None
             def _num(s: str) -> int:
-                return int(re.sub(r"\D", "", s or ""))
+                return int(re.sub(r"\D", "", s or "0"))
 
             try:
                 match = re.search(date_regex, date_text)
                 if match:
                     groups = match.groups()
                     if len(groups) == 3:
-                        year_str, month_str, day_str = groups
-                        year = _num(year_str)
+                        y, m, d = groups
+                        year = _num(y)
                         if year < 100:
                             year += 2000
-                        pub_date = datetime(year, _num(month_str), _num(day_str), tzinfo=timezone.utc)
-                    elif len(groups) == 2:
+                        pub_date = datetime(year, _num(m), _num(d), tzinfo=timezone.utc)
+                    elif len(groups) == 2 and all(g is not None for g in groups):
                         y, mo = groups
                         year = _num(y)
                         if year < 100:
                             year += 2000
                         pub_date = datetime(year, _num(mo), 1, tzinfo=timezone.utc)
+                    else:
+                        print("⚠ 想定外のグループ構成（date_regexの見直し推奨）")
                 else:
                     print("⚠ 日付の抽出に失敗しました")
             except Exception as e:
@@ -195,7 +201,7 @@ def extract_items_iframe(
             print(pub_date)
 
             if not title or not href:
-                print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）")
+                print(f"⚠ 必須フィールドが欠落したためスキップ（{i+1}行目）: title='{title}', href='{href}'")
                 continue
 
             items.append({
