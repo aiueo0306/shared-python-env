@@ -20,26 +20,29 @@ def generate_rss(items, output_path, base_url, gakkai_name):
         desc = item.get('description') or title
         pub_date = item.get('pub_date')
 
-        # エントリの表示用リンク：あればそれ、なければ base_url
+        # 表示用リンク：あればそれ、なければ base_url
         entry.title(title)
         entry.link(href=link or base_url)
         entry.description(desc)
 
         if pub_date is not None:
-            # pub_date あり → permalink=False で (リンク or base_url)#YYYYMMDD をGUIDに
-            guid_value = f"{(link or base_url)}#{pub_date.strftime('%Y%m%d')}"
-            entry.guid(guid_value, permalink=False)
+            ymd = pub_date.strftime('%Y%m%d')
+            if link:
+                # URLあり → (URL)#YYYYMMDD をGUID（permalink=False）
+                entry.guid(f"{link}#{ymd}", permalink=False)
+            else:
+                # URLなし → (タイトル名)#YYYYMMDD をGUID（permalink=False）
+                entry.guid(f"{title}#{ymd}", permalink=False)
             entry.pubDate(pub_date)
         else:
             if link:
-                # pub_date なし & リンクあり → リンク自体をGUID（permalink=True）
+                # pub_dateなし & URLあり → URLをGUID（permalink=True）
                 entry.guid(link, permalink=True)
             else:
-                # pub_date なし & リンクなし → タイトルから安定GUID（permalink=False）
-                # base_url とタイトルで安定ハッシュを作成（衝突回避用に prefix を付加）
+                # pub_dateなし & URLなし → タイトルから安定GUID（permalink=False）
                 digest = sha1(f"{base_url}|{title}".encode('utf-8')).hexdigest()
                 entry.guid(f"urn:newsitem:{digest}", permalink=False)
-                # pubDate は設定しない
+                # pubDateは設定しない
 
     dirpath = os.path.dirname(output_path)
     if dirpath:
