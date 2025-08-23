@@ -20,29 +20,24 @@ def generate_rss(items, output_path, base_url, gakkai_name):
         desc = item.get('description') or title
         pub_date = item.get('pub_date')
 
-        # 表示用リンク：あればそれ、なければ base_url
+        # 表示用リンクは常に base_url（元のコードに忠実）
         entry.title(title)
-        entry.link(href=link or base_url)
+        entry.link(href=base_url)
         entry.description(desc)
 
         if pub_date is not None:
             ymd = pub_date.strftime('%Y%m%d')
             if link:
-                # URLあり → (URL)#YYYYMMDD をGUID（permalink=False）
                 entry.guid(f"{link}#{ymd}", permalink=False)
             else:
-                # URLなし → (タイトル名)#YYYYMMDD をGUID（permalink=False）
                 entry.guid(f"{title}#{ymd}", permalink=False)
             entry.pubDate(pub_date)
         else:
             if link:
-                # pub_dateなし & URLあり → URLをGUID（permalink=True）
                 entry.guid(link, permalink=True)
             else:
-                # pub_dateなし & URLなし → タイトルから安定GUID（permalink=False）
                 digest = sha1(f"{base_url}|{title}".encode('utf-8')).hexdigest()
                 entry.guid(f"urn:newsitem:{digest}", permalink=False)
-                # pubDateは設定しない
 
     dirpath = os.path.dirname(output_path)
     if dirpath:
