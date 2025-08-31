@@ -101,6 +101,7 @@ def extract_items(
     try:
         page.wait_for_load_state("networkidle", timeout=10000) 
     except Exception:
+        print("networkidleでタイムアウトしました")
         page.wait_for_load_state("domcontentloaded")      
 
     page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=240000)
