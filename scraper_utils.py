@@ -98,12 +98,8 @@ def extract_items(
         List[Dict]: [{"title": str, "link": str, "description": str, "pub_date": datetime|None}, ...]
     """
     # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
-    try:
-        page.wait_for_load_state("networkidle", timeout=30000) 
-    except Exception:
-        print("networkidleでタイムアウトしました")
-        page.wait_for_load_state("domcontentloaded")      
-
+    
+    page.wait_for_load_state("domcontentloaded")      
     page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=240000)
 
     blocks1 = page.locator(SELECTOR_TITLE)
