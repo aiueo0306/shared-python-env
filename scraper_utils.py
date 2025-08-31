@@ -99,7 +99,7 @@ def extract_items(
     """
     # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
     try:
-        page.wait_for_load_state("networkidle", timeout=10000) 
+        page.wait_for_load_state("networkidle", timeout=30000) 
     except Exception:
         print("networkidleでタイムアウトしました")
         page.wait_for_load_state("domcontentloaded")      
