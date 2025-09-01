@@ -99,23 +99,7 @@ def extract_items(
     """
     # --- ページ安定化 & 可視を要求しない待機（DOMにアタッチされればOK）
     page.wait_for_load_state("domcontentloaded")
-
-    try:
-        page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=30000)
-    except Exception as e:
-        print("⚠️ 要素待ちでエラー:", e)
-            # 途中状態を必ず保存
-        save_dir = os.getcwd()
-        html_path = os.path.join(save_dir, "page.html")
-        screenshot_path = os.path.join(save_dir, "screenshot.png")
-        
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(page.content())
-        page.screenshot(path=screenshot_path, full_page=True)
-        
-        print("💾 エラー時に保存したファイル:", html_path, screenshot_path)
-        # エラーは再送出して処理終了
-        raise
+    page.wait_for_selector(SELECTOR_TITLE, state="attached", timeout=30000)
     
     blocks1 = page.locator(SELECTOR_TITLE)
     count_titles = blocks1.count()
