@@ -50,6 +50,9 @@ jobs:
             fi
           done
 
+      - name: Merge RSS feeds into combined.xml
+        run: python merge_feeds.py
+
       - name: Commit and push changes
         run: |
           git config --local user.name "github-actions[bot]"
