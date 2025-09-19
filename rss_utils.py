@@ -27,12 +27,19 @@ def generate_rss(items, output_path, base_url, gakkai_name):
 
         if pub_date is not None:
             ymd = pub_date.strftime('%Y%m%d')
+        
+            # 表示用リンクは一覧ページだが、日付をクエリパラメータで付与してユニーク化
+            entry.link(href=f"{base_url}?rss={ymd}")
+        
             if link:
                 entry.guid(f"{link}-{ymd}", permalink=False)
             else:
                 entry.guid(f"{title}-{ymd}", permalink=False)
+        
             entry.pubDate(pub_date)
         else:
+            # pub_date がない場合
+            entry.link(href=f"{base_url}?rss={int(datetime.now().timestamp())}")
             if link:
                 entry.guid(link, permalink=True)
             else:
