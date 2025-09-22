@@ -140,7 +140,7 @@ def extract_items(
 
             # --- URL
             href = _get_first_attr_in_parent(block1, href_selector, "href", href_index)
-            full_link = urljoin(base_url, href) if href else base_url
+            full_link = urljoin(base_url, href) if href else None
             print(full_link)
 
             # --- 日付テキスト（title列とdate列の行ズレに耐える）
