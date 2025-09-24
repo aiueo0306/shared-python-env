@@ -146,7 +146,13 @@ def extract_items(
             # --- 日付テキスト（title列とdate列の行ズレに耐える）
             # --- 日付テキスト（title列とdate列の行ズレに耐える）
             date_text = ""
-            target_for_date = block2 if block2 else block1  # 無ければ同じ行のタイトル側からも探す
+            
+            if SELECTOR_DATE is None:
+                # None の場合は日付探索自体をしない
+                target_for_date = None
+            else:
+                # それ以外（空文字や有効セレクタ）は従来どおり
+                target_for_date = block2 if block2 else block1
             
             if date_selector:
                 date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
