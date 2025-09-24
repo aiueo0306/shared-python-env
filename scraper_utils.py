@@ -144,18 +144,28 @@ def extract_items(
             print(full_link)
 
             # --- 日付テキスト（title列とdate列の行ズレに耐える）
+            # --- 日付テキスト（title列とdate列の行ズレに耐える）
             date_text = ""
-            target_for_date = block2 if block2 else block1  # 無ければ同じ行のタイトル側からも探す
-
-            if date_selector:
-                date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
+            pub_date: Optional[datetime] = None
+            
+            if SELECTOR_DATE is None or date_selector is None:
+                # 🔹 セレクターが None の場合は pub_date を強制 None にする
+                date_text = ""
+                pub_date = None
             else:
-                try:
-                    date_text = (target_for_date.text_content() or "").strip()
-                except Exception as e:
-                    print(f"⚠ 直接日付取得に失敗: {e}")
-                    date_text = ""
+                # 🔹 セレクターが空文字 "" の場合はタイトル側を探索する
+                target_for_date = block2 if block2 else block1
+            
+                if date_selector:  # 空文字でなければ普通に取得
+                    date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
+                else:  # 空文字ならタイトル全体から拾う
+                    try:
+                        date_text = (target_for_date.text_content() or "").strip()
+                    except Exception as e:
+                        print(f"⚠ 直接日付取得に失敗: {e}")
+                        date_text = ""
             print(date_text)
+
 
             # --- 日付パース（日本語 or 英語の月名に対応）
                         # --- 日付パース（日本語 or 英語の月名に対応）
