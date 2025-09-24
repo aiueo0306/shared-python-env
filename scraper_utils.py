@@ -275,7 +275,6 @@ def extract_items(
             if SELECTOR_DATE is None:
                 pub_date = None
 
-            print("あほ")
             print(pub_date)
 
             # --- 必須フィールドチェック
