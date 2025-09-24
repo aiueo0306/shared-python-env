@@ -147,7 +147,7 @@ def extract_items(
             # --- 日付テキスト（title列とdate列の行ズレに耐える）
             date_text = ""
             
-           target_for_date = block2 if block2 else block1
+            target_for_date = block2 if block2 else block1
             
             if date_selector:
                 date_text = _get_first_text_in_parent(target_for_date, date_selector, date_index)
