@@ -38,9 +38,9 @@ def generate_rss(items, output_path, base_url, gakkai_name):
             entry.pubDate(pub_date)
         else:
             # pub_date がない場合
-            entry.link(href=f"{base_url}?rss={int(datetime.now().timestamp())}")
+            entry.link(href=f"{base_url}")
             if link:
-                entry.guid(link, permalink=True)
+                entry.guid(link, permalink=False)
             else:
                 digest = sha1(f"{base_url}|{title}".encode('utf-8')).hexdigest()
                 entry.guid(f"urn:newsitem:{digest}", permalink=False)
