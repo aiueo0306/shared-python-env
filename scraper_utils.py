@@ -272,7 +272,7 @@ def extract_items(
 
 # --------------------------------------------------------------------------
 
-            if if SELECTOR_DATE is None:
+            if SELECTOR_DATE is None:
                 pub_date = None
         
             print(pub_date)
