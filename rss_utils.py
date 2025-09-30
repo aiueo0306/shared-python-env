@@ -23,7 +23,7 @@ def generate_rss(items, output_path, base_url, gakkai_name):
         # --- タイトル + 日付 ---
         if pub_date is not None:
             ymd = pub_date.strftime('%Y-%m-%d')
-            full_title = f"{title} ({ymd})"
+            full_title = f"【{ymd}】{title} "
         else:
             full_title = title
         entry.title(full_title)
