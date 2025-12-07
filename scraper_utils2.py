@@ -89,7 +89,7 @@ def extract_items(
     date_index: int,
     date_format: Optional[str],  # 互換のため残す（未使用）
     date_regex: str,             # 互換のため残す（未使用）
-    max_items: int = 10,
+    max_items: int = 500,
 ) -> List[Dict[str, Any]]:
     """
     Playwright の `page` から記事リストを抽出する（令和表記専用簡易版）。
