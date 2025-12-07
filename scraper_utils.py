@@ -277,12 +277,12 @@ def extract_items(
 
             print(pub_date)
             
-            if pub_date:
-                now = datetime.now(timezone.utc)
-                delta = now - pub_date
-                if delta.days > 3:
-                    print(f"⏳ {pub_date} は3日より古いためスキップ")
-                    continue
+            # if pub_date:
+            #     now = datetime.now(timezone.utc)
+            #     delta = now - pub_date
+            #     if delta.days > 3:
+            #         print(f"⏳ {pub_date} は3日より古いためスキップ")
+            #         continue
             
             # --- 必須フィールドチェック
             if not title:
